@@ -235,57 +235,58 @@
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   items.forEach((el) => io.observe(el));
 })();
-// Telegram-style spoiler noise (cheap: pre-rendered tile frames, low fps, pauses offscreen)
+// Telegram-style spoiler particles (smooth, lightweight)
 (function () {
   const spoilers = Array.from(document.querySelectorAll('.spoiler'));
   if (!spoilers.length) return;
-
-  // Pre-render a few noise tiles once; reuse for every spoiler.
-  const TILE = 64, FRAMES = 6;
-  const tiles = [];
-  for (let i = 0; i < FRAMES; i++) {
-    const t = document.createElement('canvas');
-    t.width = TILE; t.height = TILE;
-    const tc = t.getContext('2d');
-    tc.fillStyle = '#fff';
-    const dots = (TILE * TILE) / 7;
-    for (let d = 0; d < dots; d++) {
-      tc.globalAlpha = Math.random() * 0.85 + 0.15;
-      tc.fillRect((Math.random() * TILE) | 0, (Math.random() * TILE) | 0, 1, 1);
-    }
-    tiles.push(t);
-  }
-
   const fields = [];
+
   function build(el) {
     const canvas = document.createElement('canvas');
     canvas.className = 'spoiler-fx';
     el.appendChild(canvas);
-    return { el, canvas, ctx: canvas.getContext('2d'), w: 0, h: 0, visible: true };
+    return { el, canvas, ctx: canvas.getContext('2d'), particles: [], w: 0, h: 0, visible: true };
   }
+
   function resize(f) {
     const r = f.el.getBoundingClientRect();
     f.w = Math.max(1, Math.round(r.width));
     f.h = Math.max(1, Math.round(r.height));
-    f.canvas.width = f.w; f.canvas.height = f.h;
+    f.canvas.width = f.w;            // DPR 1 — particles don't need retina
+    f.canvas.height = f.h;
+    // fewer particles + hard cap so big banners stay cheap
+    const count = Math.min(Math.round((f.w * f.h) / 70), 320);
+    f.particles = [];
+    for (let i = 0; i < count; i++) {
+      f.particles.push({
+        x: Math.random() * f.w,
+        y: Math.random() * f.h,
+        vx: (Math.random() - 0.5) * 18,
+        vy: (Math.random() - 0.5) * 18,
+        a: Math.random(),
+        da: (Math.random() * 0.03 + 0.008) * (Math.random() < 0.5 ? -1 : 1)
+      });
+    }
   }
 
-  let fi = 0, lastSwap = 0, running = true;
+  let last = performance.now(), running = true;
   function frame(now) {
-    if (now - lastSwap > 70) {            // ~14 fps
-      lastSwap = now;
-      fi = (fi + 1) % FRAMES;
-      const ox = (Math.random() * TILE) | 0, oy = (Math.random() * TILE) | 0;
-      for (const f of fields) {
-        if (!f.visible) continue;
-        const ctx = f.ctx;
-        ctx.clearRect(0, 0, f.w, f.h);
-        const pat = ctx.createPattern(tiles[fi], 'repeat');
-        ctx.save();
-        ctx.translate(-ox, -oy);
-        ctx.fillStyle = pat;
-        ctx.fillRect(ox, oy, f.w, f.h);
-        ctx.restore();
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    for (const f of fields) {
+      if (!f.visible) continue;
+      const ctx = f.ctx;
+      ctx.clearRect(0, 0, f.w, f.h);
+      ctx.fillStyle = '#fff';
+      for (const p of f.particles) {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.x < 0) p.x += f.w; else if (p.x > f.w) p.x -= f.w;
+        if (p.y < 0) p.y += f.h; else if (p.y > f.h) p.y -= f.h;
+        p.a += p.da;
+        if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
+        else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
+        ctx.globalAlpha = p.a;
+        ctx.fillRect(p.x, p.y, 1, 1);   // square is far cheaper than arc()
       }
     }
     if (running) requestAnimationFrame(frame);
@@ -295,7 +296,6 @@
   fields.forEach(resize);
   window.addEventListener('resize', () => fields.forEach(resize));
 
-  // Pause when the whole feed is offscreen / tab hidden
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
@@ -307,7 +307,7 @@
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { running = false; }
-    else if (!running) { running = true; lastSwap = 0; requestAnimationFrame(frame); }
+    else if (!running) { running = true; last = performance.now(); requestAnimationFrame(frame); }
   });
 
   requestAnimationFrame(frame);
