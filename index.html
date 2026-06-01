@@ -261,13 +261,19 @@
     });
   }
 
+  // title dots: black on light theme, white on dark theme; everything else white
+  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  const tileFor = (f) => (f.isTitle && !isDark()) ? black.c : white.c;
   const fields = spoilers.map((el) => {
     const c = document.createElement('canvas');
     c.className = 'spoiler-fx';
     el.appendChild(c);
-    const dark = !!el.closest('.project-title');     // title → black dots, else white
-    return { el, c, ctx: c.getContext('2d'), tile: dark ? black.c : white.c, w: 0, h: 0, visible: true };
+    const f = { el, c, ctx: c.getContext('2d'), isTitle: !!el.closest('.project-title'), w: 0, h: 0, visible: true };
+    f.tile = tileFor(f);
+    return f;
   });
+  new MutationObserver(() => { for (const f of fields) f.tile = tileFor(f); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   const RS = 2;  // 2× res everywhere → smaller, denser particles like on mobile
   function resize() {
     for (const f of fields) {
