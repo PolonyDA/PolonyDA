@@ -425,6 +425,7 @@ a.cv-ava:hover {
 @media (max-width: 792px) {
   .wrap { padding-left: 16px; padding-right: 16px; }
   .nav-inner { padding-left: 16px; padding-right: 16px; }
+  .case-list { grid-template-columns: 1fr; gap: 36px; }
 }
 
 @media (max-width: 620px) {
@@ -441,7 +442,6 @@ a.cv-ava:hover {
   .hero h1 { font-size: 22px; }
   .hero-row { gap: 20px; }
   .hero-row .avatar { width: 80px; height: 80px; }
-  .case-list { grid-template-columns: 1fr; gap: 36px; }
   .case-head h1 { font-size: 26px; }
   .case-facts { grid-template-columns: 1fr 1fr; gap: 16px 18px; }
   .case-metrics { grid-template-columns: 1fr; gap: 18px; }
