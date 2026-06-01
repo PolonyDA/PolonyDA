@@ -210,7 +210,7 @@
   const saved = localStorage.getItem('jk-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   root.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
-  const setTC = () => { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(root).getPropertyValue('--bg').trim() || '#ffffff'; };
+  const setTC = () => { const col = getComputedStyle(root).getPropertyValue('--bg').trim() || '#ffffff'; const old = document.querySelector('meta[name="theme-color"]'); if (old) old.remove(); const m = document.createElement('meta'); m.setAttribute('name', 'theme-color'); m.setAttribute('content', col); document.head.appendChild(m); };
   setTC();
   const btn = document.getElementById('themeBtn');
   btn.addEventListener('click', () => {
