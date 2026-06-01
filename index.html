@@ -6,7 +6,7 @@
 <title>Дмитрий Полонский дизайнер интерфейсов</title>
 <meta name="description" content="Дмитрий Полонский — дизайнер интерфейсов" />
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-<link rel="stylesheet" href="styles.css?v=10" />
+<link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
 
@@ -245,7 +245,8 @@
     const canvas = document.createElement('canvas');
     canvas.className = 'spoiler-fx';
     el.appendChild(canvas);
-    return { el, canvas, ctx: canvas.getContext('2d'), particles: [], w: 0, h: 0, visible: true };
+    const dark = !!el.closest('.project-title');     // title → black dots, else white
+    return { el, canvas, ctx: canvas.getContext('2d'), particles: [], w: 0, h: 0, visible: true, base: dark ? 0x00000000 : 0x00ffffff };
   }
 
   function resize(f) {
@@ -290,7 +291,7 @@
         const px = p.x | 0, py = p.y | 0;
         const idx = (py * w) + px;
         // 0xAABBGGRR little-endian: white + per-particle alpha
-        const col = ((p.a * 255) << 24) | 0x00ffffff;
+        const col = ((p.a * 255) << 24) | f.base;
         buf[idx] = col;
         if (p.s === 2) {                                  // mix of 1×1 and 2×2 dots
           if (px + 1 < w) buf[idx + 1] = col;
