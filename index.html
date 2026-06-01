@@ -281,6 +281,12 @@
   }
   resize();
   window.addEventListener('resize', resize);
+  window.addEventListener('load', resize);
+  // recompute once each spoiler reaches its real size (e.g. after the banner image loads)
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(() => resize());
+    fields.forEach((f) => ro.observe(f.el));
+  }
 
   const wb = white.buf, bb = black.buf;
   let last = performance.now(), running = true;
