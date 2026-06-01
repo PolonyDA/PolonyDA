@@ -298,14 +298,10 @@ a.cv-ava:hover {
   color: var(--text);
 }
 .spoiler .sp-c { display: block; filter: blur(7px); transform: scale(1.08); }
-.spoiler::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  background-image: radial-gradient(currentColor 0.9px, transparent 1.1px);
-  background-size: 5px 5px; opacity: .35;
-  animation: spoiler-flicker .7s steps(2) infinite, spoiler-pan 2.4s linear infinite;
+.spoiler canvas.spoiler-fx {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; border-radius: inherit;
 }
-@keyframes spoiler-flicker { 0%,100% { opacity: .22; } 50% { opacity: .5; } }
-@keyframes spoiler-pan { to { background-position: 40px 40px; } }
 
 .project-title .spoiler { border-radius: 6px; padding: 0 4px; }
 .project-title .spoiler .sp-c { transform: none; }

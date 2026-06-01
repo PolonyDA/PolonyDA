@@ -6,7 +6,7 @@
 <title>Дмитрий Полонский дизайнер интерфейсов</title>
 <meta name="description" content="Дмитрий Полонский — дизайнер интерфейсов" />
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-<link rel="stylesheet" href="styles.css?v=7" />
+<link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
 
@@ -234,6 +234,74 @@
     entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   items.forEach((el) => io.observe(el));
+})();
+// Telegram-style spoiler particles
+(function () {
+  const spoilers = Array.from(document.querySelectorAll('.spoiler'));
+  if (!spoilers.length) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const fields = [];
+
+  function build(el) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'spoiler-fx';
+    el.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    const color = getComputedStyle(el).color;
+    return { el, canvas, ctx, color, particles: [], w: 0, h: 0 };
+  }
+
+  function resize(f) {
+    const r = f.el.getBoundingClientRect();
+    f.w = Math.max(1, Math.round(r.width));
+    f.h = Math.max(1, Math.round(r.height));
+    f.canvas.width = f.w * dpr;
+    f.canvas.height = f.h * dpr;
+    f.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const count = Math.round((f.w * f.h) / 90);
+    f.particles = [];
+    for (let i = 0; i < count; i++) {
+      f.particles.push({
+        x: Math.random() * f.w,
+        y: Math.random() * f.h,
+        vx: (Math.random() - 0.5) * 22,
+        vy: (Math.random() - 0.5) * 22,
+        a: Math.random(),
+        da: (Math.random() * 0.04 + 0.01) * (Math.random() < 0.5 ? -1 : 1),
+        r: Math.random() < 0.5 ? 0.7 : 1
+      });
+    }
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    for (const f of fields) {
+      const ctx = f.ctx;
+      ctx.clearRect(0, 0, f.w, f.h);
+      for (const p of f.particles) {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.x < 0) p.x += f.w; else if (p.x > f.w) p.x -= f.w;
+        if (p.y < 0) p.y += f.h; else if (p.y > f.h) p.y -= f.h;
+        p.a += p.da;
+        if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
+        else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
+        ctx.globalAlpha = p.a;
+        ctx.fillStyle = f.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, 6.283);
+        ctx.fill();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  spoilers.forEach((el) => fields.push(build(el)));
+  const resizeAll = () => fields.forEach(resize);
+  resizeAll();
+  window.addEventListener('resize', resizeAll);
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
