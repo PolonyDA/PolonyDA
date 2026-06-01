@@ -257,7 +257,7 @@
     f.canvas.width = f.w * dpr;
     f.canvas.height = f.h * dpr;
     f.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = Math.round((f.w * f.h) / 28);
+    const count = Math.round((f.w * f.h) / 9);
     f.particles = [];
     for (let i = 0; i < count; i++) {
       f.particles.push({
