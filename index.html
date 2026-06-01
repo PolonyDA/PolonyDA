@@ -6,7 +6,7 @@
 <title>Дмитрий Полонский дизайнер интерфейсов</title>
 <meta name="description" content="Дмитрий Полонский — дизайнер интерфейсов" />
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-<link rel="stylesheet" href="styles.css?v=8" />
+<link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
 
@@ -247,8 +247,7 @@
     canvas.className = 'spoiler-fx';
     el.appendChild(canvas);
     const ctx = canvas.getContext('2d');
-    const color = getComputedStyle(el).color;
-    return { el, canvas, ctx, color, particles: [], w: 0, h: 0 };
+    return { el, canvas, ctx, color: '#fff', particles: [], w: 0, h: 0 };
   }
 
   function resize(f) {
@@ -268,7 +267,7 @@
         vy: (Math.random() - 0.5) * 22,
         a: Math.random(),
         da: (Math.random() * 0.04 + 0.01) * (Math.random() < 0.5 ? -1 : 1),
-        r: Math.random() < 0.5 ? 0.7 : 1
+        r: Math.random() < 0.5 ? 1.4 : 2
       });
     }
   }
