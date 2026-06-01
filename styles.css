@@ -251,6 +251,7 @@ a.cv-ava:hover {
 .project-info { grid-column: 2; height: 64px; display: flex; flex-direction: column; justify-content: center; gap: 0; }
 .go { grid-column: 3; align-self: start; }
 .project-desc, .showcase { grid-column: 1 / -1; }
+.project:first-child .project-desc { margin-bottom: 0; }
 
 .project-head {
   display: flex; align-items: baseline; justify-content: space-between;
