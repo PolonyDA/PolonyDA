@@ -270,11 +270,12 @@
     const dark = !!el.closest('.project-title');     // title → black dots, else white
     return { el, c, ctx: c.getContext('2d'), tile: dark ? black.c : white.c, w: 0, h: 0, visible: true };
   });
+  const RS = window.matchMedia('(max-width: 820px)').matches ? 2 : 1;  // mobile: 2× res → particles look 2× smaller
   function resize() {
     for (const f of fields) {
       const r = f.el.getBoundingClientRect();
-      f.w = Math.max(1, Math.round(r.width));
-      f.h = Math.max(1, Math.round(r.height));
+      f.w = Math.max(1, Math.round(r.width * RS));
+      f.h = Math.max(1, Math.round(r.height * RS));
       f.c.width = f.w; f.c.height = f.h;
     }
   }
