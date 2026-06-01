@@ -238,77 +238,84 @@
 (function () {
   const spoilers = Array.from(document.querySelectorAll('.spoiler'));
   if (!spoilers.length) return;
-  const fields = [];
 
-  function build(el) {
-    const canvas = document.createElement('canvas');
-    canvas.className = 'spoiler-fx';
-    el.appendChild(canvas);
-    const dark = !!el.closest('.project-title');     // title → black dots, else white
-    return { el, canvas, ctx: canvas.getContext('2d'), particles: [], w: 0, h: 0, visible: true, base: dark ? 0x00000000 : 0x00ffffff };
+  // One small seamless (toroidal) particle field, simulated once per frame,
+  // then tiled over every spoiler via a repeating pattern. Heavy math touches
+  // only TILE×TILE pixels regardless of how big/many the spoilers are → cheap @ 60fps.
+  const TILE = 128;
+  function mkTile() {
+    const c = document.createElement('canvas'); c.width = c.height = TILE;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(TILE, TILE);
+    return { c, ctx, img, buf: new Uint32Array(img.data.buffer) };
+  }
+  const white = mkTile(), black = mkTile();
+
+  const N = Math.round((TILE * TILE) / 22);
+  const ps = [];
+  for (let i = 0; i < N; i++) {
+    ps.push({
+      x: Math.random() * TILE, y: Math.random() * TILE,
+      vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12,
+      a: Math.random(),
+      da: (Math.random() * 0.03 + 0.008) * (Math.random() < 0.5 ? -1 : 1),
+      s: Math.random() < 0.5 ? 1 : 2
+    });
   }
 
-  const isMobile = window.matchMedia('(max-width: 820px)').matches;
-  const SCALE = isMobile ? 0.5 : 0.7;   // render at lower res, CSS stretches canvas to 100%
-  function resize(f) {
-    const r = f.el.getBoundingClientRect();
-    f.w = Math.max(1, Math.round(r.width * SCALE));
-    f.h = Math.max(1, Math.round(r.height * SCALE));
-    f.canvas.width = f.w;            // internal buffer is smaller than display size
-    f.canvas.height = f.h;
-    f.img = f.ctx.createImageData(f.w, f.h);
-    f.buf = new Uint32Array(f.img.data.buffer);   // direct pixel writes
-    // lots of particles, but each one is a single pixel write — cheap
-    const count = Math.min(Math.round((f.w * f.h) / 22), isMobile ? 700 : 1600);
-    f.particles = [];
-    for (let i = 0; i < count; i++) {
-      f.particles.push({
-        x: Math.random() * f.w,
-        y: Math.random() * f.h,
-        vx: (Math.random() - 0.5) * 18,
-        vy: (Math.random() - 0.5) * 18,
-        a: Math.random(),
-        da: (Math.random() * 0.03 + 0.008) * (Math.random() < 0.5 ? -1 : 1),
-        s: Math.random() < 0.5 ? 1 : 2
-      });
+  const fields = spoilers.map((el) => {
+    const c = document.createElement('canvas');
+    c.className = 'spoiler-fx';
+    el.appendChild(c);
+    const dark = !!el.closest('.project-title');     // title → black dots, else white
+    return { el, c, ctx: c.getContext('2d'), tile: dark ? black.c : white.c, w: 0, h: 0, visible: true };
+  });
+  function resize() {
+    for (const f of fields) {
+      const r = f.el.getBoundingClientRect();
+      f.w = Math.max(1, Math.round(r.width));
+      f.h = Math.max(1, Math.round(r.height));
+      f.c.width = f.w; f.c.height = f.h;
     }
   }
+  resize();
+  window.addEventListener('resize', resize);
 
+  const wb = white.buf, bb = black.buf;
   let last = performance.now(), running = true;
   function frame(now) {
     if (running) requestAnimationFrame(frame);
-    const dt = (now - last) / 1000;
-    if (dt < 0.031) return;          // cap ~30 fps; dt-based motion stays smooth
+    const step = Math.min((now - last) / 1000, 0.05);
     last = now;
-    const step = Math.min(dt, 0.05);
+
+    wb.fill(0); bb.fill(0);
+    for (const p of ps) {
+      p.x += p.vx * step; p.y += p.vy * step;
+      if (p.x < 0) p.x += TILE; else if (p.x >= TILE) p.x -= TILE;
+      if (p.y < 0) p.y += TILE; else if (p.y >= TILE) p.y -= TILE;
+      p.a += p.da;
+      if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
+      else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
+      const al = (p.a * 255) << 24, wc = al | 0x00ffffff, bc = al;
+      const px = p.x | 0, py = p.y | 0;
+      const put = (xx, yy) => {
+        const i = ((yy & (TILE - 1)) * TILE) + (xx & (TILE - 1)); // wrap (TILE is pow2)
+        wb[i] = wc; bb[i] = bc;
+      };
+      put(px, py);
+      if (p.s === 2) { put(px + 1, py); put(px, py + 1); put(px + 1, py + 1); }
+    }
+    white.ctx.putImageData(white.img, 0, 0);
+    black.ctx.putImageData(black.img, 0, 0);
+
     for (const f of fields) {
       if (!f.visible) continue;
-      const buf = f.buf, w = f.w, h = f.h;
-      buf.fill(0);
-      for (const p of f.particles) {
-        p.x += p.vx * step; p.y += p.vy * step;
-        if (p.x < 0) p.x += w; else if (p.x >= w) p.x -= w;
-        if (p.y < 0) p.y += h; else if (p.y >= h) p.y -= h;
-        p.a += p.da;
-        if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
-        else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
-        const px = p.x | 0, py = p.y | 0;
-        const idx = (py * w) + px;
-        // 0xAABBGGRR little-endian: white + per-particle alpha
-        const col = ((p.a * 255) << 24) | f.base;
-        buf[idx] = col;
-        if (p.s === 2) {                                  // mix of 1×1 and 2×2 dots
-          if (px + 1 < w) buf[idx + 1] = col;
-          if (py + 1 < h) { buf[idx + w] = col; if (px + 1 < w) buf[idx + w + 1] = col; }
-        }
-      }
-      f.ctx.putImageData(f.img, 0, 0);
+      const ctx = f.ctx;
+      ctx.clearRect(0, 0, f.w, f.h);
+      ctx.fillStyle = ctx.createPattern(f.tile, 'repeat');
+      ctx.fillRect(0, 0, f.w, f.h);
     }
   }
-
-  spoilers.forEach((el) => fields.push(build(el)));
-  fields.forEach(resize);
-  window.addEventListener('resize', () => fields.forEach(resize));
 
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver((entries) => {
