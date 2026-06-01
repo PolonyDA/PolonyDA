@@ -316,10 +316,11 @@ a.cv-ava:hover {
 .spoiler-label {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 2;
-  color: #fff; font-weight: 800; letter-spacing: .18em;
+  color: #fff; font-weight: 900; letter-spacing: .18em;
   font-size: clamp(28px, 6vw, 56px);
   background: rgba(255,255,255,.36);
-  padding: .22em .6em; border-radius: 12px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  padding: .11em .6em; border-radius: var(--radius-card);
   pointer-events: none; user-select: none;
 }
 
