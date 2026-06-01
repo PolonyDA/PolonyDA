@@ -254,8 +254,10 @@
     f.h = Math.max(1, Math.round(r.height));
     f.canvas.width = f.w;            // DPR 1 — particles don't need retina
     f.canvas.height = f.h;
-    // fewer particles + hard cap so big banners stay cheap
-    const count = Math.min(Math.round((f.w * f.h) / 70), 320);
+    f.img = f.ctx.createImageData(f.w, f.h);
+    f.buf = new Uint32Array(f.img.data.buffer);   // direct pixel writes
+    // lots of particles, but each one is a single pixel write — cheap
+    const count = Math.min(Math.round((f.w * f.h) / 22), 2000);
     f.particles = [];
     for (let i = 0; i < count; i++) {
       f.particles.push({
@@ -275,19 +277,20 @@
     last = now;
     for (const f of fields) {
       if (!f.visible) continue;
-      const ctx = f.ctx;
-      ctx.clearRect(0, 0, f.w, f.h);
-      ctx.fillStyle = '#fff';
+      const buf = f.buf, w = f.w, h = f.h;
+      buf.fill(0);
       for (const p of f.particles) {
         p.x += p.vx * dt; p.y += p.vy * dt;
-        if (p.x < 0) p.x += f.w; else if (p.x > f.w) p.x -= f.w;
-        if (p.y < 0) p.y += f.h; else if (p.y > f.h) p.y -= f.h;
+        if (p.x < 0) p.x += w; else if (p.x >= w) p.x -= w;
+        if (p.y < 0) p.y += h; else if (p.y >= h) p.y -= h;
         p.a += p.da;
         if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
         else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
-        ctx.globalAlpha = p.a;
-        ctx.fillRect(p.x, p.y, 1, 1);   // square is far cheaper than arc()
+        const idx = ((p.y | 0) * w) + (p.x | 0);
+        // 0xAABBGGRR little-endian: white + per-particle alpha
+        buf[idx] = ((p.a * 255) << 24) | 0x00ffffff;
       }
+      f.ctx.putImageData(f.img, 0, 0);
     }
     if (running) requestAnimationFrame(frame);
   }
