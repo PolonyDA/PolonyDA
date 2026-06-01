@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#ffffff" />
 <title>Дмитрий Полонский — Новый сценарий маршрутов</title>
 <meta name="description" content="Переосмыслили построение маршрута для 30M+ пользователей: меньше шагов, понятнее выбор, выше доходимость до старта навигации." />
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
@@ -99,11 +100,14 @@
   const saved = localStorage.getItem('jk-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   root.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  const setTC = () => { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(root).getPropertyValue('--bg').trim() || '#ffffff'; };
+  setTC();
   const btn = document.getElementById('themeBtn');
   btn.addEventListener('click', () => {
     const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     root.setAttribute('data-theme', next);
     localStorage.setItem('jk-theme', next);
+    setTC();
   });
 })();
 (function () {
