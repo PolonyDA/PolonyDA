@@ -235,71 +235,81 @@
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   items.forEach((el) => io.observe(el));
 })();
-// Telegram-style spoiler particles
+// Telegram-style spoiler noise (cheap: pre-rendered tile frames, low fps, pauses offscreen)
 (function () {
   const spoilers = Array.from(document.querySelectorAll('.spoiler'));
   if (!spoilers.length) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const fields = [];
 
+  // Pre-render a few noise tiles once; reuse for every spoiler.
+  const TILE = 64, FRAMES = 6;
+  const tiles = [];
+  for (let i = 0; i < FRAMES; i++) {
+    const t = document.createElement('canvas');
+    t.width = TILE; t.height = TILE;
+    const tc = t.getContext('2d');
+    tc.fillStyle = '#fff';
+    const dots = (TILE * TILE) / 7;
+    for (let d = 0; d < dots; d++) {
+      tc.globalAlpha = Math.random() * 0.85 + 0.15;
+      tc.fillRect((Math.random() * TILE) | 0, (Math.random() * TILE) | 0, 1, 1);
+    }
+    tiles.push(t);
+  }
+
+  const fields = [];
   function build(el) {
     const canvas = document.createElement('canvas');
     canvas.className = 'spoiler-fx';
     el.appendChild(canvas);
-    const ctx = canvas.getContext('2d');
-    return { el, canvas, ctx, color: '#fff', particles: [], w: 0, h: 0 };
+    return { el, canvas, ctx: canvas.getContext('2d'), w: 0, h: 0, visible: true };
   }
-
   function resize(f) {
     const r = f.el.getBoundingClientRect();
     f.w = Math.max(1, Math.round(r.width));
     f.h = Math.max(1, Math.round(r.height));
-    f.canvas.width = f.w * dpr;
-    f.canvas.height = f.h * dpr;
-    f.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = Math.round((f.w * f.h) / 9);
-    f.particles = [];
-    for (let i = 0; i < count; i++) {
-      f.particles.push({
-        x: Math.random() * f.w,
-        y: Math.random() * f.h,
-        vx: (Math.random() - 0.5) * 22,
-        vy: (Math.random() - 0.5) * 22,
-        a: Math.random(),
-        da: (Math.random() * 0.04 + 0.01) * (Math.random() < 0.5 ? -1 : 1),
-        r: Math.random() < 0.5 ? 0.7 : 1
-      });
-    }
+    f.canvas.width = f.w; f.canvas.height = f.h;
   }
 
-  let last = performance.now();
+  let fi = 0, lastSwap = 0, running = true;
   function frame(now) {
-    const dt = Math.min((now - last) / 1000, 0.05);
-    last = now;
-    for (const f of fields) {
-      const ctx = f.ctx;
-      ctx.clearRect(0, 0, f.w, f.h);
-      for (const p of f.particles) {
-        p.x += p.vx * dt; p.y += p.vy * dt;
-        if (p.x < 0) p.x += f.w; else if (p.x > f.w) p.x -= f.w;
-        if (p.y < 0) p.y += f.h; else if (p.y > f.h) p.y -= f.h;
-        p.a += p.da;
-        if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
-        else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
-        ctx.globalAlpha = p.a;
-        ctx.fillStyle = f.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 6.283);
-        ctx.fill();
+    if (now - lastSwap > 70) {            // ~14 fps
+      lastSwap = now;
+      fi = (fi + 1) % FRAMES;
+      const ox = (Math.random() * TILE) | 0, oy = (Math.random() * TILE) | 0;
+      for (const f of fields) {
+        if (!f.visible) continue;
+        const ctx = f.ctx;
+        ctx.clearRect(0, 0, f.w, f.h);
+        const pat = ctx.createPattern(tiles[fi], 'repeat');
+        ctx.save();
+        ctx.translate(-ox, -oy);
+        ctx.fillStyle = pat;
+        ctx.fillRect(ox, oy, f.w, f.h);
+        ctx.restore();
       }
     }
-    requestAnimationFrame(frame);
+    if (running) requestAnimationFrame(frame);
   }
 
   spoilers.forEach((el) => fields.push(build(el)));
-  const resizeAll = () => fields.forEach(resize);
-  resizeAll();
-  window.addEventListener('resize', resizeAll);
+  fields.forEach(resize);
+  window.addEventListener('resize', () => fields.forEach(resize));
+
+  // Pause when the whole feed is offscreen / tab hidden
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        const f = fields.find((x) => x.el === e.target);
+        if (f) f.visible = e.isIntersecting;
+      });
+    }, { rootMargin: '60px' });
+    fields.forEach((f) => io.observe(f.el));
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { running = false; }
+    else if (!running) { running = true; lastSwap = 0; requestAnimationFrame(frame); }
+  });
+
   requestAnimationFrame(frame);
 })();
 </script>
