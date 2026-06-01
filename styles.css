@@ -296,10 +296,13 @@ a.cv-ava:hover {
 .reveal.in { opacity: 1; transform: none; }
 
 /* ---------- Footer ---------- */
-.footer { padding: 60px 0 90px; border-top: 1px solid var(--line); margin-top: 40px; }
+.footer {
+  padding: 60px 0 90px; border-top: 1px solid var(--line); margin-top: 40px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
 .footer .email {
   font-size: 18px; font-weight: 500; letter-spacing: -.01em;
-  display: inline-block; margin-bottom: 28px;
+  display: inline-block;
   border-bottom: 1.5px solid transparent; transition: border-color .2s ease;
 }
 .footer .email:hover { border-bottom-color: var(--text); }
