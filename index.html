@@ -286,9 +286,13 @@
         p.a += p.da;
         if (p.a <= 0.05) { p.a = 0.05; p.da = -p.da; }
         else if (p.a >= 1) { p.a = 1; p.da = -p.da; }
-        const idx = ((p.y | 0) * w) + (p.x | 0);
+        const px = p.x | 0, py = p.y | 0;
+        const idx = (py * w) + px;
         // 0xAABBGGRR little-endian: white + per-particle alpha
-        buf[idx] = ((p.a * 255) << 24) | 0x00ffffff;
+        const col = ((p.a * 255) << 24) | 0x00ffffff;
+        buf[idx] = col;                                   // 2×2 dot
+        if (px + 1 < w) buf[idx + 1] = col;
+        if (py + 1 < h) { buf[idx + w] = col; if (px + 1 < w) buf[idx + w + 1] = col; }
       }
       f.ctx.putImageData(f.img, 0, 0);
     }
