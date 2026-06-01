@@ -248,16 +248,18 @@
     return { el, canvas, ctx: canvas.getContext('2d'), particles: [], w: 0, h: 0, visible: true, base: dark ? 0x00000000 : 0x00ffffff };
   }
 
+  const isMobile = window.matchMedia('(max-width: 820px)').matches;
+  const SCALE = isMobile ? 0.5 : 0.7;   // render at lower res, CSS stretches canvas to 100%
   function resize(f) {
     const r = f.el.getBoundingClientRect();
-    f.w = Math.max(1, Math.round(r.width));
-    f.h = Math.max(1, Math.round(r.height));
-    f.canvas.width = f.w;            // DPR 1 — particles don't need retina
+    f.w = Math.max(1, Math.round(r.width * SCALE));
+    f.h = Math.max(1, Math.round(r.height * SCALE));
+    f.canvas.width = f.w;            // internal buffer is smaller than display size
     f.canvas.height = f.h;
     f.img = f.ctx.createImageData(f.w, f.h);
     f.buf = new Uint32Array(f.img.data.buffer);   // direct pixel writes
     // lots of particles, but each one is a single pixel write — cheap
-    const count = Math.min(Math.round((f.w * f.h) / 22), 2000);
+    const count = Math.min(Math.round((f.w * f.h) / 22), isMobile ? 700 : 1600);
     f.particles = [];
     for (let i = 0; i < count; i++) {
       f.particles.push({
@@ -274,14 +276,17 @@
 
   let last = performance.now(), running = true;
   function frame(now) {
-    const dt = Math.min((now - last) / 1000, 0.05);
+    if (running) requestAnimationFrame(frame);
+    const dt = (now - last) / 1000;
+    if (dt < 0.031) return;          // cap ~30 fps; dt-based motion stays smooth
     last = now;
+    const step = Math.min(dt, 0.05);
     for (const f of fields) {
       if (!f.visible) continue;
       const buf = f.buf, w = f.w, h = f.h;
       buf.fill(0);
       for (const p of f.particles) {
-        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.x += p.vx * step; p.y += p.vy * step;
         if (p.x < 0) p.x += w; else if (p.x >= w) p.x -= w;
         if (p.y < 0) p.y += h; else if (p.y >= h) p.y -= h;
         p.a += p.da;
@@ -299,7 +304,6 @@
       }
       f.ctx.putImageData(f.img, 0, 0);
     }
-    if (running) requestAnimationFrame(frame);
   }
 
   spoilers.forEach((el) => fields.push(build(el)));
